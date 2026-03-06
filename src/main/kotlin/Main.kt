@@ -10,6 +10,7 @@ import data.QuizDao
 import data.QuizRepository
 import ui.HomeScreen
 import ui.QuizView
+import util.Log
 import vm.HomeViewModel
 import vm.QuizViewModel
 
@@ -46,11 +47,12 @@ fun App(
     }
 }
 
+private const val TAG = "MainKt"
 fun main(args: Array<String>) = application {
-    println("Starting application...")
+    Log.info(TAG) { "Starting application..." }
+
     val clArgs = CLArgs(args)
 
-    println("Args: ${args.toList()}")
     val homeViewModel = HomeViewModel(launchInPortrait = clArgs.launchInPortrait)
     val dao = QuizDao()
     val repo = QuizRepository(dao)
@@ -61,14 +63,14 @@ fun main(args: Array<String>) = application {
 
 class CLArgs(args: Array<String>) {
     var launchInPortrait = false
-    var launchInLandscape= false
+    var launchInLandscape = false
 
     init {
         for (arg in args) {
             when (arg) {
                 "-p" -> launchInPortrait = true
                 "-l" -> launchInLandscape = true
-                else -> println("Unknown argument: $arg")
+                else -> Log.error(TAG) { "Unknown argument: $arg" }
             }
         }
     }

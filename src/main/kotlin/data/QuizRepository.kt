@@ -2,21 +2,26 @@ package data
 
 import model.QuestionDTO
 import model.QuestionType
+import util.Log
 import java.io.File
 import kotlin.collections.filter
+
+private const val TAG = "QuizRepository"
 
 class QuizRepository(val quizDao: QuizDao) {
     private val questions: List<QuestionDTO>
     private val tags: Set<String>
 
     init {
-        println("Initializing QuizRepository")
+        Log.info(TAG) { "Initializing QuizRepository" }
         questions = quizDao.getQuestions().ensureImageExists(true)
 //            .removeWordyQuestions(maxText = 100, maxOption = 75)
-        println("Loaded ${questions.size} questions.")
+
+        Log.info { "Loaded ${questions.size} questions." }
+
         quizDao.closeDatabase()
         tags = questions.flatMap { it.tags }.toSet()
-        println("Discovered ${tags.size} tags.")
+        Log.info { "Discovered ${tags.size} tags." }
     }
 
     /**
@@ -28,12 +33,12 @@ class QuizRepository(val quizDao: QuizDao) {
             if (q.questionType == QuestionType.IS_IMAGE) {
                 imageExists(q).also {
                     if (!it && logMissing) {
-                        println("Missing image: ${q.image}")
+                        Log.warn(TAG) { "Missing image: ${q.image}" }
                     }
                 }
             } else true
         }.also { x ->
-            println("Removed ${beforeSize - x.size} questions without images.")
+            Log.info(TAG) { "Removed ${beforeSize - x.size} questions without images." }
         }
     }
 
@@ -43,7 +48,9 @@ class QuizRepository(val quizDao: QuizDao) {
 
     fun filterQuestions(hasTags: Set<String>, ensureAllTags: Boolean = false): List<QuestionDTO> {
         if (hasTags.isEmpty()) {
-            println("No tags specified, returning all questions.")
+
+            Log.info(TAG) { "No tags specified, returning all questions." }
+
             return questions
         }
 
@@ -62,7 +69,7 @@ class QuizRepository(val quizDao: QuizDao) {
             }
         }.also {
             val modifier = if (ensureAllTags) "all" else "any of"
-            println("Filtered to ${it.size} questions containing $modifier ${hasTags.size} tags: $hasTags")
+            Log.info { "Filtered to ${it.size} questions containing $modifier ${hasTags.size} tags: $hasTags" }
         }
     }
 

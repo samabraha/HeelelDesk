@@ -4,34 +4,40 @@ import ConfigInfo
 import kotlinx.serialization.json.Json
 import model.QuestionDTO
 import model.QuestionType
+import util.Log
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.ResultSet
 
 private const val tableName = "Questions"
 
+private const val TAG = "QuizDao"
+
 class QuizDao {
     private val connection: Connection
 
     init {
-        println("Initializing QuizDao")
+        Log.info(TAG) { "Initializing QuizDao" }
         connection = connectToDBFile("tig_qz.db")
     }
 
     private fun connectToDBFile(location: String): Connection {
         val path = ConfigInfo.develogicaPath.resolve(location)
-        println("DB path: $path")
+        Log.info(TAG) { "DB path: $path" }
+
         if (path != null) {
 //            val filePath = Path(url.path.substring(1))
             val filePath = path.toFile()
-            println("DB file exists: ${filePath.exists()}")
+            Log.info(TAG) { "DB file exists: ${filePath.exists()}" }
+
             val connection = DriverManager.getConnection("jdbc:sqlite:$filePath")
             if (connection != null) {
-                println("Connection is not null")
+                Log.info(TAG) { "Connection is not null" }
+
                 return connection
             }
         } else {
-            println("Database URL is null.")
+            Log.error(TAG) { "Database URL is null." }
         }
         throw Exception("Could not connect to database.")
     }

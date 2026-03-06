@@ -68,7 +68,6 @@ class QuizViewModel(repository: QuizRepository, vararg tags: String) {
         delay(answerDuration)
     }
 
-
     fun setOptionColors(saturation: Float, lightness: Float): List<Color> {
         val colors = mutableSetOf<Color>()
         val start = random.nextInt(360)
@@ -83,7 +82,6 @@ class QuizViewModel(repository: QuizRepository, vararg tags: String) {
         return colors.toList()
     }
 }
-
 
 data class UIState(
     val isQuizRunning: Boolean = false,

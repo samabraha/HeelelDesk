@@ -1,5 +1,8 @@
 package util
 
+
+private const val TAG = "CLAProcessor"
+
 class CLAProcessor(private val args: Array<String>) {
     val commands: List<Command> = mutableListOf()
 
@@ -36,13 +39,14 @@ class CLAProcessor(private val args: Array<String>) {
                 setHeight(x.toFloat())
             } else {
                 if (x.startsWith("-")) {
-                    Log.error("No height provided")
+                    Log.error(TAG) { "No height provided" }
                 } else {
-                    Log.error("Invalid height provided")
+                    Log.error(TAG) { "Invalid height provided" }
                 }
             }
         }
     }
+
     private fun setHeight(height: Float) {
 
     }
