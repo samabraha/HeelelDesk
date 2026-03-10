@@ -1,3 +1,5 @@
+package com.develogica.heelel_desk
+
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -6,16 +8,19 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import data.QuizDao
-import data.QuizRepository
-import ui.HomeScreen
-import ui.QuizView
-import util.Log
-import vm.HomeViewModel
-import vm.QuizViewModel
+import com.develogica.heelel_desk.data.QuizDao
+import com.develogica.heelel_desk.data.QuizRepository
+import com.develogica.heelel_desk.ui.HomeScreen
+import com.develogica.heelel_desk.ui.QuizView
+import com.develogica.heelel_desk.util.Log
+import com.develogica.heelel_desk.vm.HomeViewModel
+import com.develogica.heelel_desk.vm.QuizAction
+import com.develogica.heelel_desk.vm.QuizViewModel
+
+private const val TAG = "MainKt"
 
 @Composable
-fun App(
+fun AppUI(
     homeViewModel: HomeViewModel,
     quizViewModel: QuizViewModel,
     exitApplication: () -> Unit,
@@ -40,38 +45,25 @@ fun App(
                 if (quizUIState.isQuizRunning) {
                     QuizView(homeUIState = homeState, quizViewModel = quizViewModel)
                 } else {
-                    HomeScreen(numberOfQuestions = availableQuestions, onStartClick = { quizViewModel.startQuiz() })
+                    HomeScreen(
+                        numberOfQuestions = availableQuestions,
+                        onStartClick = { quizViewModel.handleQuizAction(QuizAction.StartQuiz(it)) })
                 }
             }
         }
     }
 }
 
-private const val TAG = "MainKt"
+
 fun main(args: Array<String>) = application {
     Log.info(TAG) { "Starting application..." }
 
-    val clArgs = CLArgs(args)
 
-    val homeViewModel = HomeViewModel(launchInPortrait = clArgs.launchInPortrait)
+    val homeViewModel = HomeViewModel()
     val dao = QuizDao()
     val repo = QuizRepository(dao)
     val quizViewModel = QuizViewModel(repo)
 
-    App(homeViewModel, quizViewModel, ::exitApplication)
+    AppUI(homeViewModel, quizViewModel, ::exitApplication)
 }
 
-class CLArgs(args: Array<String>) {
-    var launchInPortrait = false
-    var launchInLandscape = false
-
-    init {
-        for (arg in args) {
-            when (arg) {
-                "-p" -> launchInPortrait = true
-                "-l" -> launchInLandscape = true
-                else -> Log.error(TAG) { "Unknown argument: $arg" }
-            }
-        }
-    }
-}

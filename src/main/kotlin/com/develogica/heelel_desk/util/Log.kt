@@ -1,4 +1,4 @@
-package util
+package com.develogica.heelel_desk.util
 
 import java.util.logging.Level
 import java.util.logging.LogRecord
