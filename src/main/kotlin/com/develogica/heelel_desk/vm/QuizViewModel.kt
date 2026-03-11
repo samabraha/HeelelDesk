@@ -149,6 +149,7 @@ data class UIState(
     val event: QuizEvent = QuizEvent.Stopped,
     val mode: QuizMode = QuizMode.Manual,
     val attempt: Attempt? = null,
+    val autoAdvance: Boolean = false,
     val question: LiveQuestion = sampleQuestions.random(),
     val questionId: Int = 0,
     val optionBackColors: List<Color> = emptyList(),

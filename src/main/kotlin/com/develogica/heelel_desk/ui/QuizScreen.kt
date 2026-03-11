@@ -14,14 +14,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -57,7 +60,12 @@ fun QuizView(
             )
         )
     ) {
-        Row {
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(.8f)
+        ) {
+            IconButton(onClick = { quizViewModel.handleQuizAction(QuizAction.StopQuiz) }) { Text(text = "Exit Quiz") }
             Text(text = "Score: ${quizViewModel.score.points.toInt()}%")
         }
         LandscapePane(quizViewModel = quizViewModel, uiState = uiState, modifier = modifier)
@@ -90,7 +98,7 @@ fun LandscapePane(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier.fillMaxSize().padding(20.dp),
     ) {
-        if (uiState.mode == QuizMode.Timed) {
+        if (uiState.mode == QuizMode.Timed && uiState.event == QuizEvent.ShowingQuestion) {
             ProgressBar(
                 key = uiState.questionId,
                 duration = quizViewModel.questionDuration,
@@ -120,7 +128,14 @@ fun LandscapePane(
             }
 
             LazyColumn(
-                modifier = Modifier.weight(1f).fillMaxSize().padding(horizontal = 32.dp, vertical = 12.dp),
+                modifier = Modifier.weight(1f).fillMaxSize()
+                    .clickable(
+                        enabled = uiState.autoAdvance.not(),
+                        onClick = {
+                            if (uiState.event == QuizEvent.ShowingAnswer) {
+                                quizViewModel.handleQuizAction(QuizAction.NextQuestion)
+                            }
+                        }).padding(horizontal = 32.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.SpaceEvenly,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -140,8 +155,6 @@ fun LandscapePane(
                             onClick = {
                                 if (uiState.event == QuizEvent.ShowingQuestion) {
                                     quizViewModel.handleQuizAction(QuizAction.ShowAnswer(Attempt.MCQ(option)))
-                                } else if (uiState.event == QuizEvent.ShowingAnswer) {
-                                    quizViewModel.handleQuizAction(QuizAction.NextQuestion)
                                 }
                             },
                             modifier = Modifier.border(1.dp, Color.White, RoundedCornerShape(24.dp))
@@ -189,8 +202,7 @@ fun TextCardView(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = modifier.shadow(6.dp, shape = RoundedCornerShape(25.dp)).background(backColor)
-            .fillMaxWidth()
+        modifier = modifier.shadow(6.dp, shape = RoundedCornerShape(25.dp)).background(backColor).fillMaxWidth()
             .padding(20.dp)
     ) {
         Text(
@@ -217,42 +229,34 @@ fun OptionCardView(
     val attempt = state.attempt
 
     val finalBackColor = if (state.event == QuizEvent.ShowingAnswer) {
-        when (attempt) {
-            is Attempt.MCQ -> {
-                if (attempt.option == option) { // The card the user clicked
-                    if (attempt.option.isCorrect) state.correctAnswerBack else state.incorrectGuessBack
-                } else { // Other cards
-                    if (option.isCorrect) state.missedCorrectAnswer else backColor
-                }
-            }
-            else -> { // No attempt or timed out (Attempt.Null)
+        if (attempt is Attempt.MCQ) {
+            if (attempt.option == option) {
+                if (attempt.option.isCorrect) state.correctAnswerBack else state.incorrectGuessBack
+            } else {
                 if (option.isCorrect) state.missedCorrectAnswer else backColor
             }
+        } else {
+            if (option.isCorrect) state.missedCorrectAnswer else backColor
         }
-    } else {
-        backColor
-    }
+    } else backColor
 
-    val animatedBackColor by animateColorAsState(targetValue = finalBackColor, animationSpec = tween(durationMillis = 500))
-    val animatedTextColor by animateColorAsState(
-        targetValue = if (state.event == QuizEvent.ShowingAnswer && option.isCorrect) animatedBackColor else Color.White,
-        animationSpec = tween(durationMillis = 500)
+
+    val animatedBackColor by animateColorAsState(
+        targetValue = finalBackColor, animationSpec = tween(durationMillis = 500)
     )
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         modifier = modifier.shadow(6.dp, shape = RoundedCornerShape(25.dp)).background(animatedBackColor)
-            .clickable { onClick(option) }
-            .fillMaxWidth()
-            .padding(20.dp)
+            .clickable { onClick(option) }.fillMaxWidth().padding(20.dp)
     ) {
         Text(
             text = option.text,
-            style = textStyle,
+            style = textStyle.copy(shadow = Shadow(blurRadius = 2f, offset = Offset(2f, 2f))),
             textAlign = TextAlign.Center,
             fontFamily = textFont,
-            color = animatedTextColor,
+            color = Color.White,
         )
     }
 }
