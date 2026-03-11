@@ -11,6 +11,11 @@ object ColorUtil {
     val lightColor = Color(100, 200, 255, 255) // For Silent Videos
     val offGlassColor = Color(5, 15, 25, 255)
 
+    val correctAnswerBack = Color(50, 115, 250, 255)
+    val missedCorrectAnswer = Color(25, 200, 50, 255)
+    val incorrectGuessBack = Color(150, 25, 25, 255)
+
+
     /**
      * Create a random color withing provided margins of randomness for hue, saturation and lightness.
      * */

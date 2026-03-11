@@ -31,13 +31,7 @@ import com.develogica.heelel_desk.model.Option
 import com.develogica.heelel_desk.model.QuestionType
 import com.develogica.heelel_desk.ui.question.ImageView
 import com.develogica.heelel_desk.util.FontUtil
-import com.develogica.heelel_desk.util.Log
-import com.develogica.heelel_desk.vm.Attempt
-import com.develogica.heelel_desk.vm.HomeUIState
-import com.develogica.heelel_desk.vm.QuizAction
-import com.develogica.heelel_desk.vm.QuizMode
-import com.develogica.heelel_desk.vm.QuizViewModel
-import com.develogica.heelel_desk.vm.UIState
+import com.develogica.heelel_desk.vm.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -63,6 +57,9 @@ fun QuizView(
             )
         )
     ) {
+        Row {
+            Text(text = "Score: ${quizViewModel.score.points.toInt()}%")
+        }
         LandscapePane(quizViewModel = quizViewModel, uiState = uiState, modifier = modifier)
     }
 }
@@ -105,9 +102,7 @@ fun LandscapePane(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        Row(
-            modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
             if (uiState.question.questionType == QuestionType.IS_TEXT) {
                 TextCardView(
                     text = uiState.question.text ?: "",
@@ -137,27 +132,19 @@ fun LandscapePane(
                         enter = fadeIn(animationSpec = tween(durationMillis = 500)),
                         modifier = Modifier.animateItem()
                     ) {
-                        val backColor = uiState.optionBackColors[index]
-
-                        val animatedTextColor by animateColorAsState(
-                            targetValue = if (uiState.showAnswer && option.isCorrect) backColor else Color.White,
-                            animationSpec = tween(durationMillis = 500)
-                        )
-
-                        val animatedBackColor by animateColorAsState(
-                            targetValue = if (uiState.showAnswer && option.isCorrect) Color.White else backColor,
-                            animationSpec = tween(durationMillis = 500)
-                        )
-
                         OptionCardView(
                             option = option,
-                            attempt = uiState.attempt,
-                            backColor = animatedBackColor,
-                            foreColor = animatedTextColor,
+                            state = uiState,
+                            backColor = uiState.optionBackColors[index],
                             textStyle = optionStyle,
-                            onClick = { quizViewModel.handleQuizAction(QuizAction.ShowAnswer(Attempt.MCQ(option))) },
-                            modifier = Modifier.border(1.dp, animatedTextColor, RoundedCornerShape(24.dp))
-//                            .padding(borderWidth)
+                            onClick = {
+                                if (uiState.event == QuizEvent.ShowingQuestion) {
+                                    quizViewModel.handleQuizAction(QuizAction.ShowAnswer(Attempt.MCQ(option)))
+                                } else if (uiState.event == QuizEvent.ShowingAnswer) {
+                                    quizViewModel.handleQuizAction(QuizAction.NextQuestion)
+                                }
+                            },
+                            modifier = Modifier.border(1.dp, Color.White, RoundedCornerShape(24.dp))
                                 .heightIn(min = 80.dp, max = 150.dp),
                         )
                     }
@@ -167,7 +154,7 @@ fun LandscapePane(
                 uiState.question.moreInfo?.let { moreInfo ->
                     item {
                         AnimatedVisibility(
-                            visible = uiState.showAnswer,
+                            visible = uiState.event == QuizEvent.ShowingAnswer,
                             enter = fadeIn(animationSpec = tween(durationMillis = 500)),
                             modifier = Modifier.animateItem()
                         ) {
@@ -220,42 +207,42 @@ fun TextCardView(
 @Composable
 fun OptionCardView(
     option: Option,
-    attempt: Attempt?,
+    state: UIState,
     modifier: Modifier = Modifier,
     backColor: Color,
-    foreColor: Color = Color.White,
     textStyle: TextStyle,
     onClick: (Option) -> Unit
 ) {
     val textFont = FontUtil.ethioFont
+    val attempt = state.attempt
 
-
-    when (attempt) {
-        is Attempt.MCQ -> {
-            Log.info { "User attempt: ${attempt.option} is correct: ${option.isCorrect}" }
+    val finalBackColor = if (state.event == QuizEvent.ShowingAnswer) {
+        when (attempt) {
+            is Attempt.MCQ -> {
+                if (attempt.option == option) { // The card the user clicked
+                    if (attempt.option.isCorrect) state.correctAnswerBack else state.incorrectGuessBack
+                } else { // Other cards
+                    if (option.isCorrect) state.missedCorrectAnswer else backColor
+                }
+            }
+            else -> { // No attempt or timed out (Attempt.Null)
+                if (option.isCorrect) state.missedCorrectAnswer else backColor
+            }
         }
-
-        Attempt.Null -> {
-            Log.info { "User attempt is of type null" }
-        }
-
-        is Attempt.QnA -> {
-            Log.info { "User answer: ${attempt.answer} is correct: ${option.isCorrect}" }
-        }
-
-        is Attempt.TrueFalse -> {
-            Log.info { "User answer: ${attempt.answer} is correct: ${option.isCorrect}" }
-        }
-
-        null -> {
-            Log.info { "User attempt is null" }
-        }
+    } else {
+        backColor
     }
+
+    val animatedBackColor by animateColorAsState(targetValue = finalBackColor, animationSpec = tween(durationMillis = 500))
+    val animatedTextColor by animateColorAsState(
+        targetValue = if (state.event == QuizEvent.ShowingAnswer && option.isCorrect) animatedBackColor else Color.White,
+        animationSpec = tween(durationMillis = 500)
+    )
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = modifier.shadow(6.dp, shape = RoundedCornerShape(25.dp)).background(backColor)
+        modifier = modifier.shadow(6.dp, shape = RoundedCornerShape(25.dp)).background(animatedBackColor)
             .clickable { onClick(option) }
             .fillMaxWidth()
             .padding(20.dp)
@@ -265,7 +252,7 @@ fun OptionCardView(
             style = textStyle,
             textAlign = TextAlign.Center,
             fontFamily = textFont,
-            color = foreColor,
+            color = animatedTextColor,
         )
     }
 }

@@ -9,13 +9,17 @@ import com.develogica.heelel_desk.model.LiveQuestion
 import com.develogica.heelel_desk.model.Option
 import com.develogica.heelel_desk.model.sampleQuestions
 import com.develogica.heelel_desk.util.ColorUtil
+import com.develogica.heelel_desk.util.Log
 import org.jetbrains.skiko.currentNanoTime
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
+private const val TAG = "QuizViewModel"
+
 class QuizViewModel(repository: QuizRepository, vararg tags: String) {
-    var mode: QuizMode = QuizMode.Regular
+    var mode: QuizMode = QuizMode.Manual
+
     private val random = Random(currentNanoTime())
     val questions = repository.filterQuestions(tags.toSet()).shuffled().toMutableList()
     val tags = questions.flatMap { it.tags }.toSet()
@@ -25,10 +29,13 @@ class QuizViewModel(repository: QuizRepository, vararg tags: String) {
 
     private var questionCounter = 0
 
-    var uiState by mutableStateOf(createNewUiState())
+    var uiState by mutableStateOf(UIState())
         private set
 
+    var score by mutableStateOf(Score())
+
     fun handleQuizAction(action: QuizAction) {
+        Log.info(TAG) { "Handling action: $action" }
         when (action) {
             is QuizAction.StartQuiz -> startQuiz(action.mode)
             is QuizAction.ShowAnswer -> showAnswer(action.attempt)
@@ -39,21 +46,56 @@ class QuizViewModel(repository: QuizRepository, vararg tags: String) {
 
     private fun startQuiz(mode: QuizMode) {
         this.mode = mode
-        uiState = createNewUiState(isQuizRunning = true)
+        score = Score()
+        setNextQuestion()
     }
 
     private fun stopQuiz() {
-        uiState = createNewUiState(isQuizRunning = false)
+        Log.info(TAG) { "Stopping quiz" }
+        uiState = UIState(event = QuizEvent.Stopped)
     }
 
-    private fun createNewUiState(question: LiveQuestion? = null, isQuizRunning: Boolean = false): UIState {
-        val id = ++questionCounter
-        val q = question ?: sampleQuestions.random(random)
+    private fun showAnswer(attempt: Attempt) {
+        Log.info(TAG) { "Showing answer: $attempt" }
+        if (uiState.event != QuizEvent.ShowingQuestion) return
 
-        return UIState(
-            isQuizRunning = isQuizRunning,
+        when (attempt) {
+            is Attempt.MCQ -> {
+                score = if (attempt.option.isCorrect) {
+                    score.copy(correct = score.correct + 1)
+                } else {
+                    score.copy(incorrect = score.incorrect + 1)
+                }
+            }
+            Attempt.Null -> {
+                score = score.copy(unanswered = score.unanswered + 1)
+            }
+            is Attempt.QnA -> {}
+            is Attempt.TrueFalse -> {}
+        }
+
+        uiState = uiState.copy(
+            event = QuizEvent.ShowingAnswer,
+            attempt = attempt
+        )
+    }
+
+    private fun setNextQuestion() {
+        Log.info(TAG) { "Setting next question" }
+
+        if (questions.isEmpty()) {
+            stopQuiz()
+            return
+        }
+
+        val question = questions.removeLast().toLiveQuestion()
+        val id = ++questionCounter
+
+        uiState = uiState.copy(
+            event = QuizEvent.ShowingQuestion,
             mode = mode,
-            question = q,
+            attempt = null,
+            question = question,
             questionId = id,
             textBackColor = ColorUtil.randomColor(saturation = 1f, lightness = .9f),
             textColor = ColorUtil.randomColor(saturation = 1.0f, lightness = .25f),
@@ -61,26 +103,6 @@ class QuizViewModel(repository: QuizRepository, vararg tags: String) {
             backgroundColorA = ColorUtil.randomColor(saturation = 1f, lightness = .25f),
             backgroundColorB = ColorUtil.randomColor(saturation = 1f, lightness = .50f),
         )
-    }
-
-    private fun showAnswer(attempt: Attempt) {
-        uiState = when (attempt) {
-            is Attempt.MCQ -> uiState.copy(showAnswer = true, attempt = attempt)
-            Attempt.Null -> uiState.copy(showAnswer = true, attempt = null)
-            is Attempt.QnA -> uiState.copy(showAnswer = true, attempt = attempt)
-            is Attempt.TrueFalse -> uiState.copy(showAnswer = true, attempt = attempt)
-        }
-    }
-
-    private fun setNextQuestion() {
-        if (questions.isEmpty()) {
-            uiState = uiState.copy(isQuizRunning = false)
-            return
-        }
-
-        val question = questions.removeLast().toLiveQuestion()
-
-        uiState = createNewUiState(question, isQuizRunning = true)
     }
 
     private fun setOptionColors(saturation: Float, lightness: Float): List<Color> {
@@ -111,19 +133,30 @@ sealed class Attempt {
 }
 
 enum class QuizMode {
-    Regular, Timed
+    Manual, Timed
+}
+
+data class Score(val correct: Int = 0, val incorrect: Int = 0, val unanswered: Int = 0) {
+    val total: Int get() = correct + incorrect + unanswered
+    val points: Float get() = if (total > 0) correct.toFloat() / total.toFloat() * 100 else 0f
+}
+
+enum class QuizEvent {
+    ShowingQuestion, ShowingAnswer, Paused, Stopped
 }
 
 data class UIState(
-    val isQuizRunning: Boolean = false,
-    val mode: QuizMode = QuizMode.Regular,
+    val event: QuizEvent = QuizEvent.Stopped,
+    val mode: QuizMode = QuizMode.Manual,
     val attempt: Attempt? = null,
-    val question: LiveQuestion,
-    val questionId: Int,
+    val question: LiveQuestion = sampleQuestions.random(),
+    val questionId: Int = 0,
     val optionBackColors: List<Color> = emptyList(),
-    val textBackColor: Color,
-    val textColor: Color,
-    val showAnswer: Boolean = false,
-    val backgroundColorA: Color,
-    val backgroundColorB: Color,
+    val textBackColor: Color = ColorUtil.randomColor(saturation = 1f, lightness = .9f),
+    val textColor: Color = ColorUtil.randomColor(saturation = 1.0f, lightness = .25f),
+    val correctAnswerBack: Color = ColorUtil.correctAnswerBack,
+    val incorrectGuessBack: Color = ColorUtil.incorrectGuessBack,
+    val missedCorrectAnswer: Color = ColorUtil.missedCorrectAnswer,
+    val backgroundColorA: Color = ColorUtil.randomColor(saturation = 1f, lightness = .25f),
+    val backgroundColorB: Color = ColorUtil.randomColor(saturation = 1f, lightness = .50f)
 )

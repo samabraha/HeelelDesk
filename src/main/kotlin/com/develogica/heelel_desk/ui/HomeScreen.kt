@@ -25,7 +25,7 @@ fun HomeScreen(
     ) {
         Text("Available Questions: $numberOfQuestions")
         Spacer(modifier = Modifier.height(12.dp))
-        Button(onClick = { onStartClick(QuizMode.Regular)}) {
+        Button(onClick = { onStartClick(QuizMode.Manual)}) {
             Text("Start Regular Quiz")
         }
         Button(onClick = { onStartClick(QuizMode.Timed)}) {

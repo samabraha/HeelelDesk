@@ -15,6 +15,7 @@ import com.develogica.heelel_desk.ui.QuizView
 import com.develogica.heelel_desk.util.Log
 import com.develogica.heelel_desk.vm.HomeViewModel
 import com.develogica.heelel_desk.vm.QuizAction
+import com.develogica.heelel_desk.vm.QuizEvent
 import com.develogica.heelel_desk.vm.QuizViewModel
 
 private const val TAG = "MainKt"
@@ -31,18 +32,13 @@ fun AppUI(
     val availableQuestions = quizViewModel.questions.size
 
     Window(
-        onCloseRequest = exitApplication,
-        title = "Heelel",
-        state = rememberWindowState(
-            position = WindowPosition.Aligned(Alignment.Center),
-            width = homeState.width,
-            height = homeState.height
-        ),
-        resizable = false
+        onCloseRequest = exitApplication, title = "Heelel", state = rememberWindowState(
+            position = WindowPosition.Aligned(Alignment.Center), width = homeState.width, height = homeState.height
+        ), resizable = false
     ) {
         MaterialTheme {
             Scaffold {
-                if (quizUIState.isQuizRunning) {
+                if (quizUIState.event != QuizEvent.Stopped) {
                     QuizView(homeUIState = homeState, quizViewModel = quizViewModel)
                 } else {
                     HomeScreen(
@@ -57,7 +53,6 @@ fun AppUI(
 
 fun main(args: Array<String>) = application {
     Log.info(TAG) { "Starting application..." }
-
 
     val homeViewModel = HomeViewModel()
     val dao = QuizDao()
